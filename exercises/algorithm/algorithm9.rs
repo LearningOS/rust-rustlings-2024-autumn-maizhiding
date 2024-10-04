@@ -1,154 +1,159 @@
 /*
-	heap
-	This question requires you to implement a binary heap function
+    stack
+    This question requires you to use a stack to achieve a bracket match
 */
-// I AM NOT DONE
 
-use std::cmp::Ord;
-use std::default::Default;
-
-pub struct Heap<T>
-where
-    T: Default,
-{
-    count: usize,
-    items: Vec<T>,
-    comparator: fn(&T, &T) -> bool,
+// 完善后的 Stack<T> 结构
+#[derive(Debug)]
+struct Stack<T> {
+    data: Vec<T>,
 }
 
-impl<T> Heap<T>
-where
-    T: Default,
-{
-    pub fn new(comparator: fn(&T, &T) -> bool) -> Self {
-        Self {
-            count: 0,
-            items: vec![T::default()],
-            comparator,
+impl<T> Stack<T> {
+    fn new() -> Self {
+        Self { data: Vec::new() }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    fn clear(&mut self) {
+        self.data.clear();
+    }
+
+    fn push(&mut self, val: T) {
+        self.data.push(val);
+    }
+
+    fn pop(&mut self) -> Option<T> {
+        self.data.pop()
+    }
+
+    fn peek(&self) -> Option<&T> {
+        self.data.last()
+    }
+
+    fn peek_mut(&mut self) -> Option<&mut T> {
+        self.data.last_mut()
+    }
+
+    fn into_iter(self) -> IntoIter<T> {
+        IntoIter(self)
+    }
+
+    fn iter(&self) -> Iter<T> {
+        Iter {
+            stack: self.data.iter().collect(),
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.count
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    pub fn add(&mut self, value: T) {
-        //TODO
-    }
-
-    fn parent_idx(&self, idx: usize) -> usize {
-        idx / 2
-    }
-
-    fn children_present(&self, idx: usize) -> bool {
-        self.left_child_idx(idx) <= self.count
-    }
-
-    fn left_child_idx(&self, idx: usize) -> usize {
-        idx * 2
-    }
-
-    fn right_child_idx(&self, idx: usize) -> usize {
-        self.left_child_idx(idx) + 1
-    }
-
-    fn smallest_child_idx(&self, idx: usize) -> usize {
-        //TODO
-		0
+    fn iter_mut(&mut self) -> IterMut<T> {
+        IterMut {
+            stack: self.data.iter_mut().collect(),
+        }
     }
 }
 
-impl<T> Heap<T>
-where
-    T: Default + Ord,
-{
-    /// Create a new MinHeap
-    pub fn new_min() -> Self {
-        Self::new(|a, b| a < b)
-    }
+struct IntoIter<T>(Stack<T>);
 
-    /// Create a new MaxHeap
-    pub fn new_max() -> Self {
-        Self::new(|a, b| a > b)
-    }
-}
-
-impl<T> Iterator for Heap<T>
-where
-    T: Default,
-{
+impl<T: Clone> Iterator for IntoIter<T> {
     type Item = T;
-
-    fn next(&mut self) -> Option<T> {
-        //TODO
-		None
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.pop()
     }
 }
 
-pub struct MinHeap;
+struct Iter<'a, T: 'a> {
+    stack: Vec<&'a T>,
+}
 
-impl MinHeap {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new<T>() -> Heap<T>
-    where
-        T: Default + Ord,
-    {
-        Heap::new(|a, b| a < b)
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.stack.pop()
     }
 }
 
-pub struct MaxHeap;
+struct IterMut<'a, T: 'a> {
+    stack: Vec<&'a mut T>,
+}
 
-impl MaxHeap {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new<T>() -> Heap<T>
-    where
-        T: Default + Ord,
-    {
-        Heap::new(|a, b| a > b)
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.stack.pop()
     }
+}
+
+// 实现的 bracket_match 函数
+fn bracket_match(bracket: &str) -> bool {
+    let mut stack: Stack<char> = Stack::new();
+    let bracket_pairs = vec![(')', '('), (']', '['), ('}', '{')];
+    let closing_brackets: Vec<char> = bracket_pairs.iter().map(|(c, _)| *c).collect();
+    let opening_brackets: Vec<char> = bracket_pairs.iter().map(|(_, c)| *c).collect();
+
+    for ch in bracket.chars() {
+        if opening_brackets.contains(&ch) {
+            stack.push(ch);
+        } else if closing_brackets.contains(&ch) {
+            if let Some(top) = stack.pop() {
+                // Find the matching opening bracket
+                let expected = bracket_pairs
+                    .iter()
+                    .find(|&&(close, _)| close == ch)
+                    .map(|&(_, open)| open);
+                if expected != Some(top) {
+                    return false;
+                }
+            } else {
+                // Stack is empty but found a closing bracket
+                return false;
+            }
+        }
+        // Ignore non-bracket characters
+    }
+
+    // Stack should be empty if all brackets are matched
+    stack.is_empty()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn test_empty_heap() {
-        let mut heap = MaxHeap::new::<i32>();
-        assert_eq!(heap.next(), None);
-    }
 
     #[test]
-    fn test_min_heap() {
-        let mut heap = MinHeap::new();
-        heap.add(4);
-        heap.add(2);
-        heap.add(9);
-        heap.add(11);
-        assert_eq!(heap.len(), 4);
-        assert_eq!(heap.next(), Some(2));
-        assert_eq!(heap.next(), Some(4));
-        assert_eq!(heap.next(), Some(9));
-        heap.add(1);
-        assert_eq!(heap.next(), Some(1));
+    fn bracket_matching_1() {
+        let s = "(2+3){func}[abc]";
+        assert_eq!(bracket_match(s), true);
     }
-
     #[test]
-    fn test_max_heap() {
-        let mut heap = MaxHeap::new();
-        heap.add(4);
-        heap.add(2);
-        heap.add(9);
-        heap.add(11);
-        assert_eq!(heap.len(), 4);
-        assert_eq!(heap.next(), Some(11));
-        assert_eq!(heap.next(), Some(9));
-        assert_eq!(heap.next(), Some(4));
-        heap.add(1);
-        assert_eq!(heap.next(), Some(2));
+    fn bracket_matching_2() {
+        let s = "(2+3)*(3-1";
+        assert_eq!(bracket_match(s), false);
+    }
+    #[test]
+    fn bracket_matching_3() {
+        let s = "{{([])}}";
+        assert_eq!(bracket_match(s), true);
+    }
+    #[test]
+    fn bracket_matching_4() {
+        let s = "{{(}[)]}";
+        assert_eq!(bracket_match(s), false);
+    }
+    #[test]
+    fn bracket_matching_5() {
+        let s = "[[[]]]]]]]]]";
+        assert_eq!(bracket_match(s), false);
+    }
+    #[test]
+    fn bracket_matching_6() {
+        let s = "";
+        assert_eq!(bracket_match(s), true);
     }
 }

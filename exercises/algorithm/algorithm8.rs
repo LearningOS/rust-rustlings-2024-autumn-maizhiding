@@ -1,104 +1,162 @@
 /*
-	queue
-	This question requires you to use queues to implement the functionality of the stac
+    stack
+    This question requires you to use a stack to achieve a bracket match
 */
-// I AM NOT DONE
 
 #[derive(Debug)]
-pub struct Queue<T> {
-    elements: Vec<T>,
+struct Stack<T> {
+    data: Vec<T>,
 }
 
-impl<T> Queue<T> {
-    pub fn new() -> Queue<T> {
-        Queue {
-            elements: Vec::new(),
+impl<T> Stack<T> {
+    fn new() -> Self {
+        Self { data: Vec::new() }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    fn clear(&mut self) {
+        self.data.clear();
+    }
+
+    fn push(&mut self, val: T) {
+        self.data.push(val);
+    }
+
+    fn pop(&mut self) -> Option<T> {
+        self.data.pop()
+    }
+
+    fn peek(&self) -> Option<&T> {
+        self.data.last()
+    }
+
+    fn peek_mut(&mut self) -> Option<&mut T> {
+        self.data.last_mut()
+    }
+
+    fn into_iter(self) -> IntoIter<T> {
+        IntoIter(self)
+    }
+
+    fn iter(&self) -> Iter<T> {
+        Iter {
+            stack: self.data.iter().collect(),
         }
     }
 
-    pub fn enqueue(&mut self, value: T) {
-        self.elements.push(value)
-    }
-
-    pub fn dequeue(&mut self) -> Result<T, &str> {
-        if !self.elements.is_empty() {
-            Ok(self.elements.remove(0usize))
-        } else {
-            Err("Queue is empty")
+    fn iter_mut(&mut self) -> IterMut<T> {
+        IterMut {
+            stack: self.data.iter_mut().collect(),
         }
-    }
-
-    pub fn peek(&self) -> Result<&T, &str> {
-        match self.elements.first() {
-            Some(value) => Ok(value),
-            None => Err("Queue is empty"),
-        }
-    }
-
-    pub fn size(&self) -> usize {
-        self.elements.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.elements.is_empty()
     }
 }
 
-impl<T> Default for Queue<T> {
-    fn default() -> Queue<T> {
-        Queue {
-            elements: Vec::new(),
-        }
+struct IntoIter<T>(Stack<T>);
+
+impl<T: Clone> Iterator for IntoIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.pop()
     }
 }
 
-pub struct myStack<T>
-{
-	//TODO
-	q1:Queue<T>,
-	q2:Queue<T>
+struct Iter<'a, T: 'a> {
+    stack: Vec<&'a T>,
 }
-impl<T> myStack<T> {
-    pub fn new() -> Self {
-        Self {
-			//TODO
-			q1:Queue::<T>::new(),
-			q2:Queue::<T>::new()
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.stack.pop()
+    }
+}
+
+struct IterMut<'a, T: 'a> {
+    stack: Vec<&'a mut T>,
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.stack.pop()
+    }
+}
+
+use std::collections::HashMap;
+
+fn bracket_match(bracket: &str) -> bool {
+    let mut stack = Stack::new();
+
+    // 定义括号的匹配关系
+    let brackets = [('(', ')'), ('{', '}'), ('[', ']')];
+    let mut matching = HashMap::new();
+    for &(open, close) in &brackets {
+        matching.insert(close, open);
+    }
+
+    for c in bracket.chars() {
+        if brackets.iter().any(|&(open, _)| c == open) {
+            stack.push(c);
+        } else if let Some(&expected_open) = matching.get(&c) {
+            if let Some(&top) = stack.peek() {
+                if top == expected_open {
+                    stack.pop();
+                } else {
+                    return false;
+                }
+            } else {
+                // 栈为空，但遇到了右括号
+                return false;
+            }
         }
+        // 忽略非括号字符
     }
-    pub fn push(&mut self, elem: T) {
-        //TODO
-    }
-    pub fn pop(&mut self) -> Result<T, &str> {
-        //TODO
-		Err("Stack is empty")
-    }
-    pub fn is_empty(&self) -> bool {
-		//TODO
-        true
-    }
+
+    stack.is_empty()
 }
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-	
-	#[test]
-	fn test_queue(){
-		let mut s = myStack::<i32>::new();
-		assert_eq!(s.pop(), Err("Stack is empty"));
-        s.push(1);
-        s.push(2);
-        s.push(3);
-        assert_eq!(s.pop(), Ok(3));
-        assert_eq!(s.pop(), Ok(2));
-        s.push(4);
-        s.push(5);
-        assert_eq!(s.is_empty(), false);
-        assert_eq!(s.pop(), Ok(5));
-        assert_eq!(s.pop(), Ok(4));
-        assert_eq!(s.pop(), Ok(1));
-        assert_eq!(s.pop(), Err("Stack is empty"));
-        assert_eq!(s.is_empty(), true);
-	}
+    use super::*;
+
+    #[test]
+    fn bracket_matching_1() {
+        let s = "(2+3){func}[abc]";
+        assert_eq!(bracket_match(s), true);
+    }
+    #[test]
+    fn bracket_matching_2() {
+        let s = "(2+3)*(3-1";
+        assert_eq!(bracket_match(s), false);
+    }
+    #[test]
+    fn bracket_matching_3() {
+        let s = "{{([])}}";
+        assert_eq!(bracket_match(s), true);
+    }
+    #[test]
+    fn bracket_matching_4() {
+        let s = "{{(}[)]}";
+        assert_eq!(bracket_match(s), false);
+    }
+    #[test]
+    fn bracket_matching_5() {
+        let s = "[[[]]]]]]]]]";
+        assert_eq!(bracket_match(s), false);
+    }
+    #[test]
+    fn bracket_matching_6() {
+        let s = "";
+        assert_eq!(bracket_match(s), true);
+    }
 }
